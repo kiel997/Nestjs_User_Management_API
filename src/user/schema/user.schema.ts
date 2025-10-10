@@ -10,7 +10,7 @@ export class User {
 
   @Prop({
     required: true,
-    unique: true,
+    unique: true, // ✅ keep this
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
@@ -34,6 +34,3 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-
-// Ensure unique index is applied
-UserSchema.index({ email: 1 }, { unique: true });
