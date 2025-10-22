@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, UseGuards, Req, Patch, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Req,
+  Patch,
+  Delete,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginUserDto } from './dto/login.dto';
@@ -19,7 +28,6 @@ export class AuthController {
     return await this.authService.login(dto);
   }
 
-  
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getProfile(@Req() req: Request) {
@@ -32,12 +40,14 @@ export class AuthController {
     };
   }
 
-  
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
   async updateProfile(@Req() req: Request, @Body() dto: any) {
     const userPayload = (req as any).user;
-    const updatedUser = await this.authService.updateProfile(userPayload._id, dto);
+    const updatedUser = await this.authService.updateProfile(
+      userPayload._id,
+      dto,
+    );
 
     return {
       message: 'Profile updated successfully',

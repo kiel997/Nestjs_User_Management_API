@@ -1,8 +1,8 @@
-import { 
-  Injectable, 
-  ConflictException, 
-  UnauthorizedException, 
-  NotFoundException 
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
@@ -19,7 +19,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  
   async register(dto: RegisterDto) {
     const { fullName, email, password } = dto;
 
@@ -34,14 +33,12 @@ export class AuthService {
     });
 
     const { password: _pw, ...sanitizedUser } = newUser.toObject();
-
     return {
       message: 'User registered successfully',
       user: sanitizedUser,
     };
   }
 
-  
   async login(dto: LoginUserDto) {
     const { email, password } = dto;
     const user = await this.userModel.findOne({ email });
@@ -54,15 +51,12 @@ export class AuthService {
     const access_token = this.jwtService.sign(payload);
 
     const { password: _pw, ...sanitizedUser } = user.toObject();
-
     return {
       message: 'Login successful',
       access_token,
       user: sanitizedUser,
-      
     };
   }
-
 
   async getProfile(userId: string) {
     const user = await this.userModel.findById(userId).select('-password');
@@ -70,12 +64,10 @@ export class AuthService {
     return user;
   }
 
-  
   async updateProfile(userId: string, dto: any) {
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    
     if (dto.fullName) user.fullName = dto.fullName;
     if (dto.email) user.email = dto.email;
     if (dto.password) user.password = await bcrypt.hash(dto.password, 10);
@@ -85,15 +77,13 @@ export class AuthService {
     return sanitizedUser;
   }
 
-  
   async deleteProfile(userId: string) {
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('User not found');
-
     await this.userModel.findByIdAndDelete(userId);
+    return { message: 'User deleted successfully' };
   }
 
-  
   async logout(_userId: string) {
     return { message: 'User logged out successfully' };
   }

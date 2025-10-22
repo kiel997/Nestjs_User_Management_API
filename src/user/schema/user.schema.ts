@@ -10,7 +10,7 @@ export class User {
 
   @Prop({
     required: true,
-    unique: true, // ✅ keep this
+    unique: true,
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
@@ -26,6 +26,20 @@ export class User {
   @Prop({ default: 'user', enum: ['user', 'admin'] })
   role: string;
 
+  // 🔹 OTP for password reset
+  @Prop({ trim: true })
+  resetOtp?: string;
+
+  @Prop()
+  resetOtpExpires?: Date;
+
+  // 🔹 JWT-based reset token (for final password reset confirmation)
+  @Prop({ trim: true })
+  resetToken?: string;
+
+  @Prop()
+  resetTokenExpires?: Date;
+
   @Prop({ default: Date.now })
   createdAt: Date;
 
@@ -34,3 +48,8 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.pre('save', function (next) {
+  this.updatedAt = new Date();
+  next();
+});
