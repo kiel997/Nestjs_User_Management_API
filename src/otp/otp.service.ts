@@ -1,114 +1,76 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Otp } from './schema/otp.schema';
+import { MailService } from '../mail/mail.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { MailService } from 'src/mail/mail.service';
 import { User } from 'src/user/schema/user.schema';
+import { InjectModel as InjectUserModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class OtpService {
   constructor(
     @InjectModel(Otp.name) private readonly otpModel: Model<Otp>,
-    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectUserModel(User.name) private readonly userModel: Model<User>,
     private readonly mailService: MailService,
     private readonly jwtService: JwtService,
   ) {}
 
-  // 🔹 Generate a random 6-digit OTP
-  private generateCode(): string {
+  private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  // 🔹 Step 1: Generate and send OTP
-  async forgotPassword(dto: ForgotPasswordDto) {
-    const { email } = dto;
-
+  async sendForgotPasswordOtp({ email }: ForgotPasswordDto) {
     const user = await this.userModel.findOne({ email });
     if (!user) throw new NotFoundException('User not found');
 
-    const code = this.generateCode();
-    const hashedCode = await bcrypt.hash(code, 10);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 mins
+    const otp = this.generateOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
 
-    await this.otpModel.deleteMany({ email });
-    await this.otpModel.create({ email, otp: hashedCode, expiresAt });
-
-    // Log OTP in console instead of sending email
-    console.log(
-      `🔗 OTP for ${email}: ${code} (valid for 5 minutes)\n👉 Verify at: http://localhost:3000/otp/verify?email=${email}&otp=${code}`,
-    );
-
-    // Optional email sending if MailService configured
-    await this.mailService.sendMail(
+    await this.otpModel.create({
       email,
-      'Your OTP Code',
-      `Your OTP is ${code}. It expires in 5 minutes.`,
-    );
+      otpHash,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
 
-    return { message: 'OTP sent successfully (check console)' };
+    await this.mailService.sendOtpEmail(email, otp);
+    return { message: 'OTP sent to your email' };
   }
 
-  
-  async verifyOtp(dto: VerifyOtpDto) {
-    const { email, otp } = dto;
+  async verifyOtp({ email, otp }: VerifyOtpDto) {
+    const record = await this.otpModel.findOne({ email }).sort({ createdAt: -1 });
+    if (!record) throw new BadRequestException('OTP not found');
 
-    const otpRecord = await this.otpModel.findOne({ email });
-    if (!otpRecord) throw new BadRequestException('Invalid OTP');
+    if (record.expiresAt < new Date()) throw new BadRequestException('OTP expired');
 
-    if (otpRecord.expiresAt < new Date()) {
-      await this.otpModel.deleteMany({ email });
-      throw new BadRequestException('OTP expired');
-    }
+    const valid = await bcrypt.compare(otp, record.otpHash);
+    if (!valid) throw new BadRequestException('Invalid OTP');
 
-    const isValid = await bcrypt.compare(otp, otpRecord.otp);
-    if (!isValid) throw new BadRequestException('Incorrect OTP');
+    record.verified = true;
+    await record.save();
 
-    
-    const payload = { email, purpose: 'reset-password' };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '10m' });
+    const accessToken = this.jwtService.sign({ email }, { expiresIn: '15m' });
 
-    
-    otpRecord.verified = true;
-    await otpRecord.save();
-
-    return {
-      message: 'OTP verified successfully',
-      accessToken,
-      expiresIn: '10m',
-    };
+    return { message: 'OTP verified', accessToken };
   }
 
-  
-  async resetPassword(dto: ResetPasswordDto, token: string) {
-    if (!token) throw new BadRequestException('Missing access token');
-
-    let decoded: any;
+  async resetPassword({ newPassword, accessToken }: ResetPasswordDto) {
     try {
-      decoded = this.jwtService.verify(token);
-    } catch {
-      throw new BadRequestException('Invalid or expired token');
+      const payload = this.jwtService.verify(accessToken);
+      const user = await this.userModel.findOne({ email: payload.email });
+      if (!user) throw new NotFoundException('User not found');
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      user.password = hashed;
+      await user.save();
+
+      return { message: 'Password reset successful' };
+    } catch (err) {
+      throw new BadRequestException('Invalid or expired access token');
     }
-
-    if (decoded.purpose !== 'reset-password')
-      throw new BadRequestException('Invalid token purpose');
-
-    const user = await this.userModel.findOne({ email: decoded.email });
-    if (!user) throw new NotFoundException('User not found');
-
-    user.password = await bcrypt.hash(dto.newPassword, 10);
-    await user.save();
-
-    await this.otpModel.deleteMany({ email: decoded.email });
-
-    return { message: 'Password reset successfully' };
   }
 }

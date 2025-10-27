@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 
 export class ResetPasswordDto {
 
@@ -8,5 +8,8 @@ export class ResetPasswordDto {
     message: 'Password too weak',
   })
   newPassword: string;
+
+   @IsString()
+  accessToken: string;
 }
 

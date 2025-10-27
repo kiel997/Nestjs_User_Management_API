@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { PostModule } from './post/post.module';
 import { OtpModule } from './otp/otp.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { OtpModule } from './otp/otp.module';
     AuthModule,
     PostModule,
     OtpModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

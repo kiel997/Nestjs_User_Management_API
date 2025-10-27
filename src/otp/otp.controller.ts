@@ -1,14 +1,6 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Query,
-  Req,
-  Headers,
-  Get,
-} from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { OtpService } from './otp.service';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
@@ -16,30 +8,18 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 export class OtpController {
   constructor(private readonly otpService: OtpService) {}
 
-  
-  @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.otpService.forgotPassword(dto);
+  @Post('forgotten-password')
+  forgottenPassword(@Body() dto: ForgotPasswordDto) {
+    return this.otpService.sendForgotPasswordOtp(dto);
   }
 
-  @Get('verify')
-  async verifyOtpFromLink(@Query('email') email: string, @Query('otp') otp: string) {
-  const verifyOtpDto = { email, otp };
-  return this.otpService.verifyOtp(verifyOtpDto);
-}
-
   @Post('verify')
-  async verifyOtp(@Body() dto: VerifyOtpDto) {
+  verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.otpService.verifyOtp(dto);
   }
 
-  
   @Post('reset-password')
-  async resetPassword(
-    @Body() dto: ResetPasswordDto,
-    @Headers('authorization') authHeader: string,
-  ) {
-    const token = authHeader?.split(' ')[1]; 
-    return this.otpService.resetPassword(dto, token);
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.otpService.resetPassword(dto);
   }
 }
